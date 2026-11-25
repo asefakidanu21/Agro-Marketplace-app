@@ -12,14 +12,18 @@ import {
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 
-import { getMyProducts } from "./productService";
+import {
+  getMyProducts,
+  deleteProduct,
+  changeProductStatus,
+} from "./productService";
 
 export default function MyProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Load products whenever this screen becomes active
+  // Load products
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true);
@@ -36,6 +40,7 @@ export default function MyProducts() {
     }
   }, []);
 
+  // Refresh whenever screen becomes active
   useFocusEffect(
     useCallback(() => {
       loadProducts();
@@ -57,7 +62,6 @@ export default function MyProducts() {
           style: "destructive",
           onPress: async () => {
             try {
-              const { deleteProduct } = await import("./productService");
               await deleteProduct(id);
 
               Alert.alert("Success", "Product deleted successfully");
@@ -74,7 +78,24 @@ export default function MyProducts() {
     );
   };
 
-  // Loading
+  // Change product availability
+  const handleStatusChange = async (id, currentStatus) => {
+    const newStatus =
+      currentStatus === "available" ? "unavailable" : "available";
+
+    try {
+      await changeProductStatus(id, newStatus);
+
+      Alert.alert("Success", `Product is now ${newStatus}`);
+      loadProducts();
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        err.response?.data?.message || "Failed to update product status"
+      );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -144,10 +165,18 @@ export default function MyProducts() {
                   Quantity: {item.quantity}
                 </Text>
 
-                <Text style={styles.status}>
+                <Text
+                  style={[
+                    styles.status,
+                    item.status === "available"
+                      ? styles.availableText
+                      : styles.unavailableText,
+                  ]}
+                >
                   Status: {item.status}
                 </Text>
 
+                {/* Edit and Delete */}
                 <View style={styles.actions}>
                   <TouchableOpacity
                     style={styles.editButton}
@@ -165,6 +194,25 @@ export default function MyProducts() {
                     <Text style={styles.buttonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Change Availability */}
+                <TouchableOpacity
+                  style={[
+                    styles.statusButton,
+                    item.status === "available"
+                      ? styles.unavailableButton
+                      : styles.availableButton,
+                  ]}
+                  onPress={() =>
+                    handleStatusChange(item.id, item.status)
+                  }
+                >
+                  <Text style={styles.buttonText}>
+                    {item.status === "available"
+                      ? "Mark Unavailable"
+                      : "Mark Available"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -255,8 +303,14 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   status: {
-    color: "#666",
     marginTop: 5,
+    fontWeight: "bold",
+  },
+  availableText: {
+    color: "#2E7D32",
+  },
+  unavailableText: {
+    color: "#EF6C00",
   },
   actions: {
     flexDirection: "row",
@@ -274,6 +328,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 18,
     borderRadius: 6,
+  },
+  statusButton: {
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  availableButton: {
+    backgroundColor: "#2E7D32",
+  },
+  unavailableButton: {
+    backgroundColor: "#EF6C00",
   },
   errorText: {
     color: "red",
