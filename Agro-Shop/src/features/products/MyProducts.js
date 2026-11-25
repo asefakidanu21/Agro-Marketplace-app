@@ -21,6 +21,7 @@ export default function MyProducts() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
+  // Load products whenever this screen becomes active
   useFocusEffect(
     useCallback(() => {
       const loadProducts = async () => {
@@ -50,6 +51,7 @@ export default function MyProducts() {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>My Products</Text>
 
@@ -57,13 +59,14 @@ export default function MyProducts() {
           style={styles.addButton}
           onPress={() => router.push("/products")}
         >
-          <Text style={styles.addButtonText}>+ Add Product</Text>
+          <Text style={styles.buttonText}>+ Add Product</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Product list */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="green" />
+          <ActivityIndicator size="large" color="#2E7D32" />
         </View>
       ) : message ? (
         <Text style={styles.message}>{message}</Text>
@@ -87,12 +90,23 @@ export default function MyProducts() {
 
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.name}</Text>
+
                 <Text style={styles.price}>
                   ETB {item.price} / {item.unit}
                 </Text>
+
                 <Text style={styles.quantity}>
                   Quantity: {item.quantity}
                 </Text>
+
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() =>
+                    router.push(`/products/edit/${item.id}`)
+                  }
+                >
+                  <Text style={styles.buttonText}>Edit Product</Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -123,7 +137,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
   },
-  addButtonText: {
+  buttonText: {
     color: "#fff",
     fontWeight: "bold",
   },
@@ -161,6 +175,13 @@ const styles = StyleSheet.create({
   quantity: {
     color: "#666",
     marginTop: 5,
+  },
+  editButton: {
+    backgroundColor: "#2E7D32",
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 10,
+    alignSelf: "flex-start",
   },
   message: {
     color: "red",

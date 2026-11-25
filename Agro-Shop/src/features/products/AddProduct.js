@@ -1,6 +1,4 @@
 
-
-
 import { useEffect, useState } from "react";
 import {
   View,
@@ -16,8 +14,8 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 
-import { getCategories } from "../categories/categoryService.js";
-import { addProduct } from "./productService.js";
+import { getCategories } from "../categories/categoryService";
+import { addProduct } from "./productService";
 
 export default function AddProduct() {
   const [categories, setCategories] = useState([]);
@@ -30,20 +28,31 @@ export default function AddProduct() {
   const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Load categories
   useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await getCategories();
+        setCategories(data);
+      } catch (error) {
+        console.log("Category error:", error.response?.data || error.message);
+        Alert.alert("Error", "Could not load categories");
+      }
+    };
+
     loadCategories();
   }, []);
 
-  const loadCategories = async () => {
-    try {
-      const data = await getCategories();
-      setCategories(data);
-    } catch (error) {
-      Alert.alert("Error", "Could not load categories");
-    }
-  };
-
+  // Select image
   const pickImage = async () => {
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permission required", "Please allow photo library access");
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -56,29 +65,41 @@ export default function AddProduct() {
     }
   };
 
+  // Add product
   const handleSubmit = async () => {
-    if (!name || !price || !unit || !quantity) {
+    console.log("Button clicked");
+
+    if (!name.trim() || !price || !unit.trim() || !quantity) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
-    if (Number(price) < 0 || Number(quantity) < 0) {
-      Alert.alert("Error", "Price and quantity cannot be negative");
+    if (
+      !Number.isFinite(Number(price)) ||
+      !Number.isFinite(Number(quantity)) ||
+      Number(price) < 0 ||
+      Number(quantity) < 0
+    ) {
+      Alert.alert("Error", "Enter valid non-negative price and quantity");
       return;
     }
 
     try {
       setLoading(true);
 
-      await addProduct({
-        name,
+      console.log("Submitting product...");
+
+      const product = await addProduct({
+        name: name.trim(),
         category_id: categoryId || null,
-        description,
+        description: description.trim(),
         price,
-        unit,
+        unit: unit.trim(),
         quantity,
         image,
       });
+
+      console.log("Product created:", product);
 
       Alert.alert("Success", "Product added successfully", [
         {
@@ -87,9 +108,14 @@ export default function AddProduct() {
         },
       ]);
     } catch (error) {
+      console.log("Product error:", error);
+      console.log("Backend response:", error.response?.data);
+
       Alert.alert(
         "Error",
-        error.response?.data?.message || "Could not add product"
+        error.response?.data?.message ||
+          error.message ||
+          "Could not add product"
       );
     } finally {
       setLoading(false);
@@ -97,7 +123,11 @@ export default function AddProduct() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Add Product</Text>
 
       <Text style={styles.label}>Product Name *</Text>
@@ -142,7 +172,7 @@ export default function AddProduct() {
         multiline
       />
 
-      <Text style={styles.label}>Price *</Text>
+      <Text style={styles.label}>Price (ETB) *</Text>
       <TextInput
         style={styles.input}
         placeholder="Enter price"
@@ -169,8 +199,11 @@ export default function AddProduct() {
       />
 
       <Text style={styles.label}>Product Image</Text>
+
       <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
-        <Text style={styles.imageButtonText}>Choose Image</Text>
+        <Text style={styles.imageButtonText}>
+          {image ? "Change Image" : "Choose Image"}
+        </Text>
       </TouchableOpacity>
 
       {image && (
@@ -178,7 +211,7 @@ export default function AddProduct() {
       )}
 
       <TouchableOpacity
-        style={styles.submitButton}
+        style={[styles.submitButton, loading && styles.disabledButton]}
         onPress={handleSubmit}
         disabled={loading}
       >
@@ -194,8 +227,12 @@ export default function AddProduct() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
+    flex: 1,
     backgroundColor: "#fff",
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
   },
   title: {
     fontSize: 24,
@@ -262,7 +299,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginTop: 25,
-    marginBottom: 30,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   submitText: {
     color: "#fff",
