@@ -8,46 +8,81 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 
-import { useAuth } from "../../context/AuthContext";
 import { getMyProducts } from "./productService";
 
 export default function MyProducts() {
-  const { user } = useAuth();
-
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   // Load products whenever this screen becomes active
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await getMyProducts();
+      setProducts(data);
+    } catch (err) {
+      setError(
+        err.response?.data?.message || "Failed to load your products"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      const loadProducts = async () => {
-        if (!user?.id) {
-          setLoading(false);
-          return;
-        }
-
-        try {
-          setLoading(true);
-          setMessage("");
-
-          const data = await getMyProducts(user.id);
-          setProducts(data);
-        } catch (error) {
-          setMessage(
-            error.response?.data?.message || "Failed to load products"
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-
       loadProducts();
-    }, [user?.id])
+    }, [loadProducts])
   );
+
+  // Delete product
+  const handleDelete = (id) => {
+    Alert.alert(
+      "Delete Product",
+      "Are you sure you want to delete this product?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { deleteProduct } = await import("./productService");
+              await deleteProduct(id);
+
+              Alert.alert("Success", "Product deleted successfully");
+              loadProducts();
+            } catch (err) {
+              Alert.alert(
+                "Error",
+                err.response?.data?.message || "Failed to delete product"
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Loading
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Loading products...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -63,17 +98,23 @@ export default function MyProducts() {
         </TouchableOpacity>
       </View>
 
-      {/* Product list */}
-      {loading ? (
+      {/* Error */}
+      {error ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2E7D32" />
+          <Text style={styles.errorText}>{error}</Text>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={loadProducts}
+          >
+            <Text style={styles.buttonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
-      ) : message ? (
-        <Text style={styles.message}>{message}</Text>
       ) : (
         <FlatList
           data={products}
           keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.list}
           ListEmptyComponent={
             <Text style={styles.emptyText}>
               You haven't added any products yet.
@@ -86,7 +127,11 @@ export default function MyProducts() {
                   source={{ uri: item.image_url }}
                   style={styles.image}
                 />
-              ) : null}
+              ) : (
+                <View style={styles.noImage}>
+                  <Text style={styles.noImageText}>No Image</Text>
+                </View>
+              )}
 
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{item.name}</Text>
@@ -99,14 +144,27 @@ export default function MyProducts() {
                   Quantity: {item.quantity}
                 </Text>
 
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() =>
-                    router.push(`/products/edit/${item.id}`)
-                  }
-                >
-                  <Text style={styles.buttonText}>Edit Product</Text>
-                </TouchableOpacity>
+                <Text style={styles.status}>
+                  Status: {item.status}
+                </Text>
+
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() =>
+                      router.push(`/products/edit/${item.id}`)
+                    }
+                  >
+                    <Text style={styles.buttonText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => handleDelete(item.id)}
+                  >
+                    <Text style={styles.buttonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           )}
@@ -146,6 +204,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingText: {
+    marginTop: 10,
+    color: "#666",
+  },
+  list: {
+    paddingBottom: 20,
+  },
   productCard: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -160,6 +225,19 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
   },
+  noImage: {
+    width: 85,
+    height: 85,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: "#eee",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noImageText: {
+    color: "#777",
+    fontSize: 12,
+  },
   productInfo: {
     flex: 1,
   },
@@ -168,7 +246,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   price: {
-    color: "green",
+    color: "#2E7D32",
     marginTop: 6,
     fontWeight: "bold",
   },
@@ -176,16 +254,36 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 5,
   },
+  status: {
+    color: "#666",
+    marginTop: 5,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+  },
   editButton: {
     backgroundColor: "#2E7D32",
-    padding: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
     borderRadius: 6,
-    marginTop: 10,
-    alignSelf: "flex-start",
   },
-  message: {
+  deleteButton: {
+    backgroundColor: "#D32F2F",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 6,
+  },
+  errorText: {
     color: "red",
     textAlign: "center",
+    marginBottom: 12,
+  },
+  retryButton: {
+    backgroundColor: "#2E7D32",
+    padding: 10,
+    borderRadius: 8,
   },
   emptyText: {
     textAlign: "center",

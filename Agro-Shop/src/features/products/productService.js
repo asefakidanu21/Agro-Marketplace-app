@@ -7,68 +7,61 @@ export const getProducts = async () => {
   return response.data.data;
 };
 
+// Get logged-in farmer's products
+export const getMyProducts = async () => {
+  const response = await api.get("/products/my-products");
+  return response.data.data;
+};
+
 // Get one product
 export const getProduct = async (id) => {
   const response = await api.get(`/products/${id}`);
   return response.data.data;
 };
 
-// Get farmer's products
-export const getMyProducts = async (farmerId) => {
-  const response = await api.get("/products", {
-    params: { farmer_id: farmerId },
-  });
-
-  return response.data.data;
-};
-
-// Convert product data into FormData
-const createProductFormData = (productData) => {
+// Create FormData for adding and editing products
+const createProductFormData = (data) => {
   const formData = new FormData();
 
-  formData.append("name", productData.name);
-  formData.append("category_id", String(productData.category_id));
-  formData.append("description", productData.description || "");
-  formData.append("price", String(productData.price));
-  formData.append("unit", productData.unit);
-  formData.append("quantity", String(productData.quantity));
+  formData.append("name", data.name);
+  formData.append("category_id", data.category_id || "");
+  formData.append("description", data.description || "");
+  formData.append("price", String(data.price));
+  formData.append("unit", data.unit);
+  formData.append("quantity", String(data.quantity));
 
-  if (productData.image) {
-    if (productData.image.file) {
-      formData.append("image", productData.image.file);
-    } else {
-      formData.append("image", {
-        uri: productData.image.uri,
-        name: productData.image.fileName || "product.jpg",
-        type: productData.image.mimeType || "image/jpeg",
-      });
-    }
+  if (data.image) {
+    formData.append("image", {
+      uri: data.image.uri,
+      name: data.image.fileName || "product.jpg",
+      type: data.image.mimeType || "image/jpeg",
+    });
   }
 
   return formData;
 };
 
 // Add product
-export const addProduct = async (productData) => {
-  const formData = createProductFormData(productData);
+export const addProduct = async (data) => {
+  const formData = createProductFormData(data);
 
   const response = await api.post("/products", formData);
-
   return response.data.data;
 };
 
 // Update product
-export const updateProduct = async (id, productData) => {
-  const formData = createProductFormData(productData);
+export const updateProduct = async (id, data) => {
+  const formData = createProductFormData(data);
 
   const response = await api.put(`/products/${id}`, formData);
-
   return response.data.data;
 };
 
 // Change product status
 export const changeProductStatus = async (id, status) => {
-  const response = await api.patch(`/products/${id}/status`, { status });
+  const response = await api.patch(`/products/${id}/status`, {
+    status,
+  });
 
   return response.data.data;
 };
