@@ -8,6 +8,7 @@ export default function TabsLayout() {
 
   const isFarmer = user?.role === "farmer";
   const isAdmin = user?.role === "admin";
+  const isBuyer = user?.role === "buyer";
 
   return (
     <Tabs
@@ -65,6 +66,17 @@ export default function TabsLayout() {
         options={{
           title: "Orders",
           href: isFarmer ? undefined : null,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="receipt-outline" color={color} size={size} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="my-orders"
+        options={{
+          title: "My Orders",
+          href: isBuyer ? undefined : null,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="receipt-outline" color={color} size={size} />
           ),

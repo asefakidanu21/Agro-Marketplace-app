@@ -1,7 +1,4 @@
 
-
-
-
 import { useCallback, useState } from "react";
 import {
   View,
@@ -10,16 +7,19 @@ import {
   Pressable,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useFocusEffect, router } from "expo-router";
+import { useFocusEffect } from "expo-router";
+
 import {
   getMyOrders,
-  cancelOrder,
   getOrderDetails,
+  cancelOrder,
 } from "./orderService";
 
 export default function MyOrders() {
   const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadOrders = async () => {
@@ -27,10 +27,7 @@ export default function MyOrders() {
       const data = await getMyOrders();
       setOrders(data);
     } catch (error) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to load orders"
-      );
+      Alert.alert("Error", error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -45,71 +42,77 @@ export default function MyOrders() {
   const handleDetails = async (id) => {
     try {
       const data = await getOrderDetails(id);
-
-      Alert.alert(
-        `Order #${id}`,
-        `Status: ${data.order.status}\n\n` +
-          data.items
-            .map(
-              (item) =>
-                `${item.product_name}\nQuantity: ${item.quantity}\nETB ${item.subtotal}`
-            )
-            .join("\n\n")
-      );
+      setSelectedOrder(data);
     } catch (error) {
-      Alert.alert("Error", "Failed to load order details");
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to load order details"
+      );
     }
   };
 
-  const handleCancel = (id) => {
-    Alert.alert("Cancel Order", "Are you sure you want to cancel this order?", [
-      { text: "No", style: "cancel" },
-      {
-        text: "Yes, Cancel",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await cancelOrder(id);
-            Alert.alert("Success", "Order cancelled");
-            loadOrders();
-          } catch (error) {
-            Alert.alert(
-              "Error",
-              error.response?.data?.message || "Failed to cancel order"
-            );
-          }
-        },
-      },
-    ]);
-  };
+const handleCancel = async (id) => {
+  try {
+    console.log("Cancelling order:", id);
 
-  const renderOrder = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.title}>Order #{item.id}</Text>
-      <Text>Status: {item.status}</Text>
-      <Text>Total: ETB {item.total_amount}</Text>
-      <Text>Fulfillment: {item.fulfillment_method}</Text>
+    await cancelOrder(id);
 
-      <Pressable
-        style={styles.detailsButton}
-        onPress={() => handleDetails(item.id)}
-      >
-        <Text style={styles.buttonText}>View Details</Text>
-      </Pressable>
+    console.log("Order cancelled successfully");
 
-      {item.status === "pending" && (
-        <Pressable
-          style={styles.cancelButton}
-          onPress={() => handleCancel(item.id)}
-        >
-          <Text style={styles.buttonText}>Cancel Order</Text>
-        </Pressable>
-      )}
-    </View>
-  );
+    setSelectedOrder(null);
+    await loadOrders();
+  } catch (error) {
+    console.log("Cancel error:", error.response?.data || error.message);
+
+    Alert.alert(
+      "Error",
+      error.response?.data?.message || "Failed to cancel order"
+    );
+  }
+};
 
   if (loading) {
-    return <Text style={styles.message}>Loading orders...</Text>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#287a3d" />
+      </View>
+    );
+  }
+
+  if (selectedOrder) {
+    const { order, items } = selectedOrder;
+
+    return (
+      <View style={styles.container}>
+        <Pressable onPress={() => setSelectedOrder(null)}>
+          <Text style={styles.back}>← Back to Orders</Text>
+        </Pressable>
+
+        <Text style={styles.heading}>Order #{order.id}</Text>
+        <Text>Status: {order.status}</Text>
+        <Text>Total: ETB {order.total_amount}</Text>
+        <Text>Fulfillment: {order.fulfillment_method}</Text>
+
+        <Text style={styles.sectionTitle}>Order Items</Text>
+
+        {items.map((item) => (
+          <View key={item.id} style={styles.item}>
+            <Text style={styles.productName}>{item.product_name}</Text>
+            <Text>Quantity: {item.quantity}</Text>
+            <Text>ETB {item.subtotal}</Text>
+          </View>
+        ))}
+
+        {order.status === "pending" && (
+          <Pressable
+            style={styles.cancelButton}
+            onPress={() => handleCancel(order.id)}
+          >
+            <Text style={styles.buttonText}>Cancel Order</Text>
+          </Pressable>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -119,9 +122,32 @@ export default function MyOrders() {
       <FlatList
         data={orders}
         keyExtractor={(item) => String(item.id)}
-        renderItem={renderOrder}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.productName}>Order #{item.id}</Text>
+            <Text>Status: {item.status}</Text>
+            <Text>Total: ETB {item.total_amount}</Text>
+            <Text>Fulfillment: {item.fulfillment_method}</Text>
+
+            <Pressable
+              style={styles.detailsButton}
+              onPress={() => handleDetails(item.id)}
+            >
+              <Text style={styles.buttonText}>View Details</Text>
+            </Pressable>
+
+            {item.status === "pending" && (
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => handleCancel(item.id)}
+              >
+                <Text style={styles.buttonText}>Cancel Order</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
         ListEmptyComponent={
-          <Text style={styles.message}>You haven't placed any orders yet.</Text>
+          <Text style={styles.empty}>You haven't placed any orders yet.</Text>
         }
       />
     </View>
@@ -131,8 +157,13 @@ export default function MyOrders() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: "#fff",
+    padding: 16,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   heading: {
     fontSize: 24,
@@ -140,13 +171,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   card: {
-    padding: 16,
-    marginBottom: 12,
     backgroundColor: "#f5f5f5",
+    padding: 16,
     borderRadius: 10,
+    marginBottom: 12,
   },
-  title: {
-    fontSize: 18,
+  productName: {
+    fontSize: 17,
     fontWeight: "bold",
     marginBottom: 8,
   },
@@ -154,22 +185,40 @@ const styles = StyleSheet.create({
     backgroundColor: "#287a3d",
     padding: 12,
     borderRadius: 6,
-    marginTop: 12,
     alignItems: "center",
+    marginTop: 12,
   },
   cancelButton: {
     backgroundColor: "#c0392b",
     padding: 12,
     borderRadius: 6,
-    marginTop: 8,
     alignItems: "center",
+    marginTop: 8,
   },
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
   },
-  message: {
-    padding: 20,
+  back: {
+    color: "#287a3d",
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  item: {
+    backgroundColor: "#f5f5f5",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  empty: {
     textAlign: "center",
+    marginTop: 30,
+    color: "#777",
   },
 });
