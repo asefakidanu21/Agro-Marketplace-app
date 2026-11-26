@@ -1,6 +1,4 @@
 
-
-
 import { useCallback, useState } from "react";
 import {
   View,
@@ -9,7 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 
@@ -23,15 +22,20 @@ export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
+
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [orderItems, setOrderItems] = useState([]);
   const [detailsLoading, setDetailsLoading] = useState(false);
+
   const [updatingId, setUpdatingId] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Load farmer orders
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
+
       setError("");
 
       const data = await getFarmerOrders();
@@ -41,7 +45,7 @@ export default function Orders() {
         err.response?.data?.message || "Failed to load orders"
       );
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, []);
 
@@ -62,64 +66,56 @@ export default function Orders() {
     try {
       setDetailsLoading(true);
       setExpandedOrder(id);
+      setOrderItems([]);
 
       const result = await getOrderDetails(id);
       setOrderItems(result.items || []);
     } catch (err) {
       setExpandedOrder(null);
 
-      Alert.alert(
-        "Error",
-        err.response?.data?.message || "Failed to load order details"
+      setFeedback(
+        err.response?.data?.message ||
+          "Failed to load order details"
       );
     } finally {
       setDetailsLoading(false);
     }
   };
 
-  // Update order status
-  const handleStatusChange = (id, status) => {
-    const messages = {
-      accepted: "Accept this order?",
-      rejected: "Reject this order?",
-      processing: "Start processing this order?",
-      ready_for_delivery: "Mark this order as ready for delivery?",
-      completed: "Mark this order as completed?",
-    };
-
-    Alert.alert(
-      "Update Order",
-      messages[status],
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Confirm",
-          onPress: async () => {
-            try {
-              setUpdatingId(id);
-
-              await changeOrderStatus(id, status);
-
-              Alert.alert("Success", "Order status updated");
-              await loadOrders();
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err.response?.data?.message || "Failed to update order"
-              );
-            } finally {
-              setUpdatingId(null);
-            }
-          },
-        },
-      ]
-    );
+  // Open confirmation modal
+  const handleStatusChange = (id, status, label) => {
+    setPendingAction({ id, status, label });
   };
 
-  // Status actions allowed by the backend
+  // Confirm and update order status
+  const confirmStatusChange = async () => {
+    if (!pendingAction) return;
+
+    const { id, status } = pendingAction;
+
+    try {
+      setUpdatingId(id);
+      setFeedback("");
+
+      await changeOrderStatus(id, status);
+
+      setPendingAction(null);
+      setFeedback("Order status updated successfully.");
+
+      await loadOrders(false);
+    } catch (err) {
+      setPendingAction(null);
+
+      setFeedback(
+        err.response?.data?.message ||
+          "Failed to update order"
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  // Status actions allowed by backend
   const getStatusActions = (status) => {
     switch (status) {
       case "pending":
@@ -168,13 +164,23 @@ export default function Orders() {
     <View style={styles.container}>
       <Text style={styles.title}>Farmer Orders</Text>
 
+      {feedback !== "" && (
+        <View style={styles.feedback}>
+          <Text style={styles.feedbackText}>{feedback}</Text>
+
+          <Pressable onPress={() => setFeedback("")}>
+            <Text style={styles.closeFeedback}>×</Text>
+          </Pressable>
+        </View>
+      )}
+
       {error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
 
           <TouchableOpacity
             style={styles.refreshButton}
-            onPress={loadOrders}
+            onPress={() => loadOrders()}
           >
             <Text style={styles.buttonText}>Try Again</Text>
           </TouchableOpacity>
@@ -232,7 +238,9 @@ export default function Orders() {
                   onPress={() => handleViewDetails(item.id)}
                 >
                   <Text style={styles.buttonText}>
-                    {isExpanded ? "Hide Details" : "View Order Items"}
+                    {isExpanded
+                      ? "Hide Details"
+                      : "View Order Items"}
                   </Text>
                 </TouchableOpacity>
 
@@ -286,7 +294,11 @@ export default function Orders() {
                         ]}
                         disabled={updatingId === item.id}
                         onPress={() =>
-                          handleStatusChange(item.id, action.value)
+                          handleStatusChange(
+                            item.id,
+                            action.value,
+                            action.label
+                          )
                         }
                       >
                         <Text style={styles.buttonText}>
@@ -303,6 +315,49 @@ export default function Orders() {
           }}
         />
       )}
+
+      {/* Confirmation Modal */}
+      <Modal
+        visible={pendingAction !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPendingAction(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Confirm Order Update
+            </Text>
+
+            <Text style={styles.modalMessage}>
+              Are you sure you want to{" "}
+              {pendingAction?.label?.toLowerCase()}?
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                disabled={updatingId !== null}
+                onPress={() => setPendingAction(null)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmButton}
+                disabled={updatingId !== null}
+                onPress={confirmStatusChange}
+              >
+                {updatingId !== null ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Confirm</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -437,5 +492,69 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#666",
     marginTop: 40,
+  },
+  feedback: {
+    backgroundColor: "#E8F5E9",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  feedbackText: {
+    color: "#2E7D32",
+    flex: 1,
+  },
+  closeFeedback: {
+    fontSize: 22,
+    color: "#555",
+    paddingHorizontal: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    width: "100%",
+    maxWidth: 400,
+    padding: 20,
+    borderRadius: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#666",
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 25,
+  },
+  cancelButton: {
+    padding: 12,
+    borderRadius: 6,
+    backgroundColor: "#eee",
+  },
+  cancelText: {
+    color: "#333",
+    fontWeight: "bold",
+  },
+  confirmButton: {
+    padding: 12,
+    borderRadius: 6,
+    backgroundColor: "#2E7D32",
+    minWidth: 90,
+    alignItems: "center",
   },
 });
