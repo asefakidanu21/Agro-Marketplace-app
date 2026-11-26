@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -17,6 +14,7 @@ import { useLocalSearchParams, router } from "expo-router";
 
 import { getProduct } from "./productService";
 import { addToCart } from "../cart/cartService";
+import { addFavorite } from "../favorites/favoriteService";
 
 export default function ProductDetails() {
   const { id } = useLocalSearchParams();
@@ -25,6 +23,7 @@ export default function ProductDetails() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [favoriting, setFavoriting] = useState(false);
 
   useEffect(() => {
     loadProduct();
@@ -73,6 +72,36 @@ export default function ProductDetails() {
       );
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleAddFavorite = async () => {
+    try {
+      setFavoriting(true);
+
+      await addFavorite(product.id);
+
+      Alert.alert(
+        "Success",
+        "Product added to your favorites",
+        [
+          {
+            text: "Continue Shopping",
+            style: "cancel",
+          },
+          {
+            text: "View Favorites",
+            onPress: () => router.push("/favorites"),
+          },
+        ]
+      );
+    } catch (error) {
+      Alert.alert(
+        "Error",
+        error.response?.data?.message || "Failed to add favorite"
+      );
+    } finally {
+      setFavoriting(false);
     }
   };
 
@@ -171,6 +200,16 @@ export default function ProductDetails() {
         >
           <Text style={styles.addButtonText}>
             {adding ? "Adding..." : "Add to Cart"}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={handleAddFavorite}
+          disabled={favoriting}
+        >
+          <Text style={styles.favoriteButtonText}>
+            {favoriting ? "Adding to Favorites..." : "♡ Add to Favorites"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -275,6 +314,18 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
+  },
+  favoriteButton: {
+    backgroundColor: "#FCE4EC",
+    padding: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  favoriteButtonText: {
+    color: "#C2185B",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   disabledButton: {
     opacity: 0.5,

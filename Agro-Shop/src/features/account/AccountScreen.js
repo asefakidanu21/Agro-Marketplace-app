@@ -22,6 +22,7 @@ export default function AccountScreen() {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>My Account</Text>
 
+      {/* Profile */}
       <View style={styles.profile}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -33,6 +34,7 @@ export default function AccountScreen() {
         <Text style={styles.role}>{user?.role}</Text>
       </View>
 
+      {/* Account Information */}
       <View style={styles.info}>
         <Text style={styles.label}>Full Name</Text>
         <Text style={styles.value}>{user?.full_name}</Text>
@@ -41,12 +43,15 @@ export default function AccountScreen() {
         <Text style={styles.value}>{user?.email}</Text>
 
         <Text style={styles.label}>Phone</Text>
-        <Text style={styles.value}>{user?.phone || "Not provided"}</Text>
+        <Text style={styles.value}>
+          {user?.phone || "Not provided"}
+        </Text>
 
         <Text style={styles.label}>Account Type</Text>
         <Text style={styles.value}>{user?.role}</Text>
       </View>
 
+      {/* Buyer Menu */}
       {user?.role === "buyer" && (
         <View style={styles.menu}>
           <Text style={styles.menuHeading}>My Activities</Text>
@@ -66,9 +71,18 @@ export default function AccountScreen() {
             <Text style={styles.menuText}>Delivery Addresses</Text>
             <Text style={styles.arrow}>›</Text>
           </Pressable>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => router.push("/favorites")}
+          >
+            <Text style={styles.menuText}>My Favorites</Text>
+            <Text style={styles.arrow}>›</Text>
+          </Pressable>
         </View>
       )}
 
+      {/* Farmer Menu */}
       {user?.role === "farmer" && (
         <View style={styles.menu}>
           <Text style={styles.menuHeading}>My Activities</Text>
@@ -91,7 +105,11 @@ export default function AccountScreen() {
         </View>
       )}
 
-      <Pressable style={styles.logoutButton} onPress={handleLogout}>
+      {/* Logout */}
+      <Pressable
+        style={styles.logoutButton}
+        onPress={handleLogout}
+      >
         <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
     </ScrollView>
