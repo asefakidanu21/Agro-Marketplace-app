@@ -1,4 +1,5 @@
 
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,29 +9,68 @@ import {
 } from "react-native";
 
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useIsFocused } from "expo-router";
+
+import { getNotifications } from "../notifications/notificationService";
 
 export default function HomeHeader() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const isFocused = useIsFocused();
+
+  const loadUnreadCount = async () => {
+    try {
+      const notifications = await getNotifications();
+
+      const unread = notifications.filter(
+        (item) => !item.is_read
+      ).length;
+
+      setUnreadCount(unread);
+    } catch (error) {
+      console.log(
+        "Failed to load notification count:",
+        error.response?.data || error.message
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (isFocused) {
+      loadUnreadCount();
+    }
+  }, [isFocused]);
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.logo}>Agro-Shop</Text>
+
           <Text style={styles.subtitle}>
             Fresh products, directly from farmers
           </Text>
         </View>
 
+        {/* Notification Bell */}
         <Pressable
           onPress={() => router.push("/notifications")}
           style={styles.notification}
         >
           <Ionicons
             name="notifications-outline"
-            size={26}
+            size={28}
             color="#2E7D32"
           />
+
+          {unreadCount > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Text>
+            </View>
+          )}
         </Pressable>
       </View>
 
@@ -91,6 +131,26 @@ const styles = StyleSheet.create({
 
   notification: {
     padding: 8,
+    position: "relative",
+  },
+
+  badge: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    backgroundColor: "#E53935",
+    minWidth: 19,
+    height: 19,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+
+  badgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
   },
 
   banner: {
