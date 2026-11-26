@@ -1,6 +1,4 @@
 
-
-
 import api from "../../api/api";
 
 // Get buyer's addresses
@@ -9,15 +7,9 @@ export const getMyAddresses = async () => {
   return response.data.data;
 };
 
-// Create a new address
+// Create address
 export const createAddress = async (data) => {
   const response = await api.post("/addresses", data);
-  return response.data.data;
-};
-
-// Get one address
-export const getAddress = async (id) => {
-  const response = await api.get(`/addresses/${id}`);
   return response.data.data;
 };
 
@@ -25,4 +17,10 @@ export const getAddress = async (id) => {
 export const deleteAddress = async (id) => {
   const response = await api.delete(`/addresses/${id}`);
   return response.data;
+};
+
+// Set default address
+export const setDefaultAddress = async (id) => {
+  const response = await api.patch(`/addresses/${id}/default`);
+  return response.data.data;
 };

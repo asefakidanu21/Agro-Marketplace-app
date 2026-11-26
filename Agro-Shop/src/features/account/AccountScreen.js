@@ -4,9 +4,9 @@ import {
   Text,
   Pressable,
   StyleSheet,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-
 import { useAuth } from "../../context/AuthContext";
 
 export default function AccountScreen() {
@@ -19,7 +19,7 @@ export default function AccountScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.title}>My Account</Text>
 
       <View style={styles.profile}>
@@ -41,19 +41,60 @@ export default function AccountScreen() {
         <Text style={styles.value}>{user?.email}</Text>
 
         <Text style={styles.label}>Phone</Text>
-        <Text style={styles.value}>{user?.phone}</Text>
+        <Text style={styles.value}>{user?.phone || "Not provided"}</Text>
 
         <Text style={styles.label}>Account Type</Text>
         <Text style={styles.value}>{user?.role}</Text>
       </View>
 
-      <Pressable
-        style={styles.logoutButton}
-        onPress={handleLogout}
-      >
+      {user?.role === "buyer" && (
+        <View style={styles.menu}>
+          <Text style={styles.menuHeading}>My Activities</Text>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => router.push("/(tabs)/my-orders")}
+          >
+            <Text style={styles.menuText}>My Orders</Text>
+            <Text style={styles.arrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => router.push("/addresses")}
+          >
+            <Text style={styles.menuText}>Delivery Addresses</Text>
+            <Text style={styles.arrow}>›</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {user?.role === "farmer" && (
+        <View style={styles.menu}>
+          <Text style={styles.menuHeading}>My Activities</Text>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => router.push("/(tabs)/my-products")}
+          >
+            <Text style={styles.menuText}>My Products</Text>
+            <Text style={styles.arrow}>›</Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.menuItem}
+            onPress={() => router.push("/(tabs)/orders")}
+          >
+            <Text style={styles.menuText}>Farmer Orders</Text>
+            <Text style={styles.arrow}>›</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <Pressable style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Logout</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -109,12 +150,39 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     marginBottom: 18,
   },
+  menu: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  menuHeading: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  menuItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  menuText: {
+    fontSize: 16,
+  },
+  arrow: {
+    fontSize: 24,
+    color: "#777",
+  },
   logoutButton: {
     backgroundColor: "#dc2626",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
     marginTop: 25,
+    marginBottom: 30,
   },
   logoutText: {
     color: "#fff",
