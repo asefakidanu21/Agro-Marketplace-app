@@ -40,6 +40,20 @@ export const getAllProducts = async (req, res, next) => {
   }
 };
 
+// Get logged-in farmer's products
+export const getMyProducts = async (req, res, next) => {
+  try {
+    const products = await ProductService.getMyProducts(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      data: products,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Get product by ID
 export const getProductById = async (req, res, next) => {
   try {

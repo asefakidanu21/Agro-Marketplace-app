@@ -4,6 +4,7 @@ import express from "express";
 import {
   createProduct,
   getAllProducts,
+  getMyProducts,
   getProductById,
   updateProduct,
   changeProductStatus,
@@ -18,6 +19,16 @@ const router = express.Router();
 
 // Public routes
 router.get("/", getAllProducts);
+
+// Farmer-only route
+router.get(
+  "/my-products",
+  requireAuth,
+  requireRole("farmer"),
+  getMyProducts
+);
+
+// Public route
 router.get("/:id", getProductById);
 
 // Farmer-only routes

@@ -1,3 +1,4 @@
+
 import * as ProductModel from "./product.model.js";
 import { getCategoryById } from "../categories/category.service.js";
 
@@ -76,6 +77,11 @@ export const getAllProducts = async () => {
   return await ProductModel.findAllProducts();
 };
 
+// Get logged-in farmer's products
+export const getMyProducts = async (farmerId) => {
+  return await ProductModel.findMyProducts(farmerId);
+};
+
 // Get one product
 export const getProductById = async (id) => {
   validateId(id);
@@ -146,7 +152,6 @@ export const deleteProduct = async (productId, farmerId) => {
   try {
     return await ProductModel.deleteProduct(productId);
   } catch (error) {
-    // A product cannot be deleted if it is referenced by a cart item.
     if (error.code === "23503") {
       throw createError("This product is already in a cart and cannot be deleted", 409);
     }
@@ -155,22 +160,16 @@ export const deleteProduct = async (productId, farmerId) => {
   }
 };
 
-
-
+// Reduce product stock
 export const reduceStock = async (productId, quantity) => {
-  const product = await ProductModel.reduceProductStock(
-    productId,
-    quantity
-  );
+  const product = await ProductModel.reduceProductStock(productId, quantity);
 
   if (!product) {
     throw createError("Product unavailable or insufficient stock", 400);
   }
 };
 
+// Restore product stock
 export const restoreStock = async (productId, quantity) => {
-  return await ProductModel.restoreProductStock(
-    productId,
-    quantity
-  );
+  return await ProductModel.restoreProductStock(productId, quantity);
 };

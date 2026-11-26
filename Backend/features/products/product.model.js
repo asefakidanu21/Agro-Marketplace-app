@@ -1,3 +1,4 @@
+
 import sql from "../../config/database.js";
 
 // Create product
@@ -39,6 +40,19 @@ export const findAllProducts = async () => {
     FROM products p
     JOIN users u ON p.farmer_id = u.id
     LEFT JOIN categories c ON p.category_id = c.id
+    ORDER BY p.created_at DESC
+  `;
+};
+
+// Get products belonging to one farmer
+export const findMyProducts = async (farmerId) => {
+  return await sql`
+    SELECT
+      p.*,
+      c.name AS category_name
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.farmer_id = ${farmerId}
     ORDER BY p.created_at DESC
   `;
 };
@@ -104,7 +118,6 @@ export const deleteProduct = async (id) => {
 
   return product;
 };
-
 
 // Reduce product stock
 export const reduceProductStock = async (id, quantity) => {
