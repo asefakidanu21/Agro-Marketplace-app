@@ -3,6 +3,7 @@ import * as OrderModel from "./order.model.js";
 import * as CartService from "../carts/cart.service.js";
 import * as AddressService from "../addresses/address.service.js";
 import * as ProductService from "../products/product.service.js";
+import * as NotificationService from "../notifications/notification.service.js";
 
 const createError = (message, statusCode) => {
   const error = new Error(message);
@@ -43,9 +44,10 @@ export const placeOrder = async (buyerId, data) => {
     if (!farmerOrders[farmerId]) {
       farmerOrders[farmerId] = {
         farmer_id: farmerId,
-        address_id: data.fulfillment_method === "delivery"
-          ? data.address_id
-          : null,
+        address_id:
+          data.fulfillment_method === "delivery"
+            ? data.address_id
+            : null,
         fulfillment_method: data.fulfillment_method,
         notes: data.notes || null,
         total_amount: 0,
@@ -72,7 +74,7 @@ export const placeOrder = async (buyerId, data) => {
   const reducedItems = [];
 
   try {
-    // Reduce stock through Products Service
+    // Reduce stock
     for (const order of orders) {
       for (const item of order.items) {
         await ProductService.reduceStock(
@@ -84,14 +86,29 @@ export const placeOrder = async (buyerId, data) => {
       }
     }
 
-    // Create orders through Orders Model
+    // Create orders
     const createdOrders = await OrderModel.createOrders(
       buyerId,
       orders
     );
 
-    // Empty cart through Cart Service
+    // Empty cart
     await CartService.emptyCart(buyerId);
+
+    // Notify each farmer about their order
+    for (const order of createdOrders) {
+      try {
+        await NotificationService.createNotification({
+          user_id: order.farmer_id,
+          title: "New Order Received",
+          message: `You have received a new order #${order.id}.`,
+          type: "new_order",
+          related_order_id: order.id,
+        });
+      } catch (error) {
+        console.error("Failed to create farmer notification:", error);
+      }
+    }
 
     return createdOrders;
   } catch (error) {
@@ -173,7 +190,25 @@ export const changeOrderStatus = async (id, farmerId, status) => {
     }
   }
 
-  return await OrderModel.updateOrderStatus(id, status);
+  const updatedOrder = await OrderModel.updateOrderStatus(
+    id,
+    status
+  );
+
+  // Notify buyer about order status
+  try {
+    await NotificationService.createNotification({
+      user_id: order.buyer_id,
+      title: "Order Status Updated",
+      message: `Your order #${id} has been ${status}.`,
+      type: "order_status",
+      related_order_id: id,
+    });
+  } catch (error) {
+    console.error("Failed to create buyer notification:", error);
+  }
+
+  return updatedOrder;
 };
 
 // Cancel pending order
@@ -203,5 +238,23 @@ export const cancelOrder = async (id, buyerId) => {
     }
   }
 
-  return await OrderModel.updateOrderStatus(id, "cancelled");
+  const updatedOrder = await OrderModel.updateOrderStatus(
+    id,
+    "cancelled"
+  );
+
+  // Notify farmer about cancellation
+  try {
+    await NotificationService.createNotification({
+      user_id: order.farmer_id,
+      title: "Order Cancelled",
+      message: `Order #${id} has been cancelled by the buyer.`,
+      type: "order_cancelled",
+      related_order_id: id,
+    });
+  } catch (error) {
+    console.error("Failed to create farmer notification:", error);
+  }
+
+  return updatedOrder;
 };
