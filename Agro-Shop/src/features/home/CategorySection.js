@@ -13,17 +13,30 @@ const categoryEmojis = {
   Vegetables: "🥦",
   Fruits: "🍎",
   Grains: "🌾",
-  "Root Crops": "🥔",
   Livestock: "🐄",
+  "Root Crops": "🥔",
+  Tomatoes: "🌱",
   Dairy: "🥛",
 };
 
 export default function CategorySection({ categories = [] }) {
+  const openCategory = (categoryId) => {
+    router.push({
+      pathname: "/(tabs)/category",
+      params: {
+        categoryId: String(categoryId),
+      },
+    });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Categories</Text>
-        <Pressable onPress={() => router.push("/categories")}>
+
+        <Pressable
+          onPress={() => router.push("/(tabs)/category")}
+        >
           <Text style={styles.seeAll}>See all</Text>
         </Pressable>
       </View>
@@ -33,9 +46,7 @@ export default function CategorySection({ categories = [] }) {
           <Pressable
             key={category.id}
             style={styles.category}
-            onPress={() =>
-              router.push(`/products?categoryId=${category.id}`)
-            }
+            onPress={() => openCategory(category.id)}
           >
             <View style={styles.emojiContainer}>
               <Text style={styles.emoji}>

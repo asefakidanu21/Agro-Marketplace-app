@@ -1,8 +1,5 @@
 
-
-
-
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,19 +8,29 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 import { getCategories } from "./categoryService";
 import { getProducts } from "../products/productService";
 import ProductCard from "../products/ProductCard";
 
 export default function CategoryScreen() {
+  const { categoryId } = useLocalSearchParams();
+
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(
+    categoryId ? String(categoryId) : null
+  );
   const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
+  // Update selected category when navigation parameters change
+  useEffect(() => {
+    setSelectedCategory(categoryId ? String(categoryId) : null);
+  }, [categoryId]);
+
+  // Load categories and products
+  const loadData = useCallback(async () => {
     try {
       const [categoryData, productData] = await Promise.all([
         getCategories(),
@@ -37,14 +44,15 @@ export default function CategoryScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [loadData])
   );
 
+  // Filter products by selected category
   const filteredProducts = selectedCategory
     ? products.filter(
         (product) =>
@@ -90,7 +98,7 @@ export default function CategoryScreen() {
               String(selectedCategory) === String(category.id) &&
                 styles.selectedCategory,
             ]}
-            onPress={() => setSelectedCategory(category.id)}
+            onPress={() => setSelectedCategory(String(category.id))}
           >
             <Text style={styles.categoryIcon}>
               {category.icon || "🌱"}

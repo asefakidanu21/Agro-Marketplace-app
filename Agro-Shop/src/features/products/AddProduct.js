@@ -67,8 +67,6 @@ export default function AddProduct() {
 
   // Add product
   const handleSubmit = async () => {
-    console.log("Button clicked");
-
     if (!name.trim() || !price || !unit.trim() || !quantity) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
@@ -87,8 +85,6 @@ export default function AddProduct() {
     try {
       setLoading(true);
 
-      console.log("Submitting product...");
-
       const product = await addProduct({
         name: name.trim(),
         category_id: categoryId || null,
@@ -101,12 +97,9 @@ export default function AddProduct() {
 
       console.log("Product created:", product);
 
-      Alert.alert("Success", "Product added successfully", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      // Navigate to My Products after successful creation
+      router.replace("/(tabs)/my-products");
+
     } catch (error) {
       console.log("Product error:", error);
       console.log("Backend response:", error.response?.data);
