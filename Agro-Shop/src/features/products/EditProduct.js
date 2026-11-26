@@ -1,6 +1,4 @@
 
-
-
 import { useEffect, useState } from "react";
 import {
   View,
@@ -10,7 +8,6 @@ import {
   Image,
   ScrollView,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -31,8 +28,10 @@ export default function EditProduct() {
   const [quantity, setQuantity] = useState("");
   const [currentImage, setCurrentImage] = useState(null);
   const [image, setImage] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     loadProduct();
@@ -41,6 +40,7 @@ export default function EditProduct() {
   const loadProduct = async () => {
     try {
       setLoading(true);
+      setMessage("");
 
       const [product, categoryData] = await Promise.all([
         getProduct(id),
@@ -58,8 +58,7 @@ export default function EditProduct() {
       setQuantity(String(product.quantity ?? ""));
       setCurrentImage(product.image_url || null);
     } catch (error) {
-      Alert.alert(
-        "Error",
+      setMessage(
         error.response?.data?.message || "Could not load product"
       );
     } finally {
@@ -72,7 +71,7 @@ export default function EditProduct() {
       await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert("Permission required", "Please allow photo library access");
+      setMessage("Please allow photo library access.");
       return;
     }
 
@@ -89,8 +88,10 @@ export default function EditProduct() {
   };
 
   const handleUpdate = async () => {
+    setMessage("");
+
     if (!name.trim() || !price || !unit.trim() || !quantity) {
-      Alert.alert("Error", "Please fill in all required fields");
+      setMessage("Please fill in all required fields.");
       return;
     }
 
@@ -100,7 +101,7 @@ export default function EditProduct() {
       Number(price) < 0 ||
       Number(quantity) < 0
     ) {
-      Alert.alert("Error", "Enter valid non-negative price and quantity");
+      setMessage("Enter valid non-negative price and quantity.");
       return;
     }
 
@@ -117,15 +118,10 @@ export default function EditProduct() {
         image,
       });
 
-      Alert.alert("Success", "Product updated successfully", [
-        {
-          text: "OK",
-          onPress: () => router.back(),
-        },
-      ]);
+      // Navigate directly after successful update
+      router.replace("/(tabs)/my-products");
     } catch (error) {
-      Alert.alert(
-        "Error",
+      setMessage(
         error.response?.data?.message || "Could not update product"
       );
     } finally {
@@ -137,6 +133,7 @@ export default function EditProduct() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2E7D32" />
+        <Text>Loading product...</Text>
       </View>
     );
   }
@@ -148,6 +145,12 @@ export default function EditProduct() {
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.title}>Edit Product</Text>
+
+      {message !== "" && (
+        <View style={styles.messageBox}>
+          <Text style={styles.messageText}>{message}</Text>
+        </View>
+      )}
 
       <Text style={styles.label}>Product Name *</Text>
       <TextInput
@@ -219,7 +222,10 @@ export default function EditProduct() {
 
       <Text style={styles.label}>Product Image</Text>
 
-      <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+      <TouchableOpacity
+        style={styles.imageButton}
+        onPress={pickImage}
+      >
         <Text style={styles.imageButtonText}>Choose New Image</Text>
       </TouchableOpacity>
 
@@ -231,7 +237,10 @@ export default function EditProduct() {
       )}
 
       <TouchableOpacity
-        style={styles.submitButton}
+        style={[
+          styles.submitButton,
+          saving && styles.disabledButton,
+        ]}
         onPress={handleUpdate}
         disabled={saving}
       >
@@ -329,5 +338,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  messageBox: {
+    backgroundColor: "#FFEBEE",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  messageText: {
+    color: "#C62828",
   },
 });

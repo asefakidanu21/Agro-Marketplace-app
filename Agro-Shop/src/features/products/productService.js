@@ -1,4 +1,5 @@
 
+import { Platform } from "react-native";
 import api from "../../api/api";
 
 // Get all products
@@ -31,11 +32,21 @@ const createProductFormData = (data) => {
   formData.append("quantity", String(data.quantity));
 
   if (data.image) {
-    formData.append("image", {
-      uri: data.image.uri,
-      name: data.image.fileName || "product.jpg",
-      type: data.image.mimeType || "image/jpeg",
-    });
+    if (Platform.OS === "web") {
+      // Browser image upload
+      if (data.image.file) {
+        formData.append("image", data.image.file);
+      } else {
+        throw new Error("Selected image file is missing");
+      }
+    } else {
+      // React Native image upload
+      formData.append("image", {
+        uri: data.image.uri,
+        name: data.image.fileName || "product.jpg",
+        type: data.image.mimeType || "image/jpeg",
+      });
+    }
   }
 
   return formData;

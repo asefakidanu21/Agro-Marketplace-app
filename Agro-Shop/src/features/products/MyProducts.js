@@ -8,7 +8,8 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
+  Modal,
+  Pressable,
 } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 
@@ -22,6 +23,11 @@ export default function MyProducts() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
 
   // Load products
   const loadProducts = useCallback(async () => {
@@ -47,35 +53,37 @@ export default function MyProducts() {
     }, [loadProducts])
   );
 
-  // Delete product
-  const handleDelete = (id) => {
-    Alert.alert(
-      "Delete Product",
-      "Are you sure you want to delete this product?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteProduct(id);
+  // Open delete confirmation
+  const handleDelete = (product) => {
+    setDeleteTarget(product);
+  };
 
-              Alert.alert("Success", "Product deleted successfully");
-              loadProducts();
-            } catch (err) {
-              Alert.alert(
-                "Error",
-                err.response?.data?.message || "Failed to delete product"
-              );
-            }
-          },
-        },
-      ]
-    );
+  // Confirm deletion
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    try {
+      setDeleting(true);
+      setMessage("");
+
+      await deleteProduct(deleteTarget.id);
+
+      setProducts((previous) =>
+        previous.filter(
+          (product) => product.id !== deleteTarget.id
+        )
+      );
+
+      setDeleteTarget(null);
+      setMessage("Product deleted successfully.");
+    } catch (err) {
+      setDeleteTarget(null);
+      setMessage(
+        err.response?.data?.message || "Failed to delete product"
+      );
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Change product availability
@@ -84,15 +92,27 @@ export default function MyProducts() {
       currentStatus === "available" ? "unavailable" : "available";
 
     try {
+      setUpdatingId(id);
+      setMessage("");
+
       await changeProductStatus(id, newStatus);
 
-      Alert.alert("Success", `Product is now ${newStatus}`);
-      loadProducts();
-    } catch (err) {
-      Alert.alert(
-        "Error",
-        err.response?.data?.message || "Failed to update product status"
+      setProducts((previous) =>
+        previous.map((product) =>
+          product.id === id
+            ? { ...product, status: newStatus }
+            : product
+        )
       );
+
+      setMessage(`Product is now ${newStatus}.`);
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message ||
+          "Failed to update product status"
+      );
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -107,7 +127,6 @@ export default function MyProducts() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>My Products</Text>
 
@@ -119,7 +138,15 @@ export default function MyProducts() {
         </TouchableOpacity>
       </View>
 
-      {/* Error */}
+      {message !== "" && (
+        <View style={styles.messageBox}>
+          <Text style={styles.messageText}>{message}</Text>
+          <Pressable onPress={() => setMessage("")}>
+            <Text style={styles.closeMessage}>×</Text>
+          </Pressable>
+        </View>
+      )}
+
       {error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
@@ -176,7 +203,6 @@ export default function MyProducts() {
                   Status: {item.status}
                 </Text>
 
-                {/* Edit and Delete */}
                 <View style={styles.actions}>
                   <TouchableOpacity
                     style={styles.editButton}
@@ -189,13 +215,13 @@ export default function MyProducts() {
 
                   <TouchableOpacity
                     style={styles.deleteButton}
-                    onPress={() => handleDelete(item.id)}
+                    disabled={deleting}
+                    onPress={() => handleDelete(item)}
                   >
                     <Text style={styles.buttonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
 
-                {/* Change Availability */}
                 <TouchableOpacity
                   style={[
                     styles.statusButton,
@@ -203,14 +229,17 @@ export default function MyProducts() {
                       ? styles.unavailableButton
                       : styles.availableButton,
                   ]}
+                  disabled={updatingId === item.id}
                   onPress={() =>
                     handleStatusChange(item.id, item.status)
                   }
                 >
                   <Text style={styles.buttonText}>
-                    {item.status === "available"
-                      ? "Mark Unavailable"
-                      : "Mark Available"}
+                    {updatingId === item.id
+                      ? "Updating..."
+                      : item.status === "available"
+                        ? "Mark Unavailable"
+                        : "Mark Available"}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -218,6 +247,47 @@ export default function MyProducts() {
           )}
         />
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal
+        visible={deleteTarget !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteTarget(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Delete Product</Text>
+
+            <Text style={styles.modalMessage}>
+              Are you sure you want to delete{" "}
+              {deleteTarget?.name}?
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                disabled={deleting}
+                onPress={() => setDeleteTarget(null)}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.confirmDeleteButton}
+                disabled={deleting}
+                onPress={confirmDelete}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -355,5 +425,69 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#666",
     marginTop: 40,
+  },
+  messageBox: {
+    backgroundColor: "#E8F5E9",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  messageText: {
+    color: "#2E7D32",
+    flex: 1,
+  },
+  closeMessage: {
+    fontSize: 22,
+    paddingHorizontal: 8,
+    color: "#555",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    width: "100%",
+    maxWidth: 400,
+    padding: 20,
+    borderRadius: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: "#666",
+    lineHeight: 24,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 25,
+  },
+  cancelButton: {
+    padding: 12,
+    borderRadius: 6,
+    backgroundColor: "#eee",
+  },
+  cancelText: {
+    color: "#333",
+    fontWeight: "bold",
+  },
+  confirmDeleteButton: {
+    padding: 12,
+    borderRadius: 6,
+    backgroundColor: "#D32F2F",
+    minWidth: 85,
+    alignItems: "center",
   },
 });
