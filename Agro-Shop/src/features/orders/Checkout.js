@@ -111,47 +111,42 @@ export default function Checkout() {
     }
   };
 
-  const handlePlaceOrder = async () => {
-    if (cartItems.length === 0) {
-      Alert.alert("Error", "Your cart is empty");
-      return;
-    }
 
-    if (fulfillmentMethod === "delivery" && !selectedAddress) {
-      Alert.alert("Error", "Please select a delivery address");
-      return;
-    }
+const handlePlaceOrder = async () => {
+  if (cartItems.length === 0) {
+    Alert.alert("Error", "Your cart is empty");
+    return;
+  }
 
-    try {
-      setPlacingOrder(true);
+  if (fulfillmentMethod === "delivery" && !selectedAddress) {
+    Alert.alert("Error", "Please select a delivery address");
+    return;
+  }
 
-      await placeOrder({
-        fulfillment_method: fulfillmentMethod,
-        address_id:
-          fulfillmentMethod === "delivery"
-            ? selectedAddress
-            : null,
-      });
+  try {
+    setPlacingOrder(true);
 
-      Alert.alert(
-        "Success",
-        "Your order has been placed successfully!",
-        [
-          {
-            text: "OK",
-            onPress: () => router.replace("/(tabs)"),
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert(
-        "Order Failed",
-        error.response?.data?.message || "Failed to place order"
-      );
-    } finally {
-      setPlacingOrder(false);
-    }
-  };
+    await placeOrder({
+      fulfillment_method: fulfillmentMethod,
+      address_id:
+        fulfillmentMethod === "delivery"
+          ? selectedAddress
+          : null,
+    });
+
+    // Navigate directly after successful order placement
+    router.replace("/(tabs)/my-orders");
+
+  } catch (error) {
+    Alert.alert(
+      "Order Failed",
+      error.response?.data?.message || "Failed to place order"
+    );
+  } finally {
+    setPlacingOrder(false);
+  }
+};
+
 
   if (loading) {
     return (
