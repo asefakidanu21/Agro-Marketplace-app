@@ -1,26 +1,67 @@
 
+import React from "react";
 import {
   View,
   Text,
-  Pressable,
-  StyleSheet,
+  TouchableOpacity,
   ScrollView,
+  StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { router } from "expo-router";
+
 import { useAuth } from "../../context/AuthContext";
 
 export default function AccountScreen() {
   const { user, logout } = useAuth();
-  const router = useRouter();
+
+  const isBuyer = user?.role === "buyer";
+  const isFarmer = user?.role === "farmer";
 
   const handleLogout = async () => {
     await logout();
     router.replace("/(auth)/login");
   };
 
+  const menuItems = [
+    ...(isBuyer
+      ? [
+          {
+            title: "My Orders",
+            onPress: () => router.push("/(tabs)/my-orders"),
+          },
+          {
+            title: "Delivery Addresses",
+            onPress: () => router.push("/addresses"),
+          },
+          {
+            title: "My Favorites",
+            onPress: () => router.push("/favorites"),
+          },
+        ]
+      : []),
+
+    ...(isFarmer
+      ? [
+          {
+            title: "My Products",
+            onPress: () => router.push("/(tabs)/my-products"),
+          },
+          {
+            title: "Farmer Orders",
+            onPress: () => router.push("/(tabs)/orders"),
+          },
+        ]
+      : []),
+
+    {
+      title: "Notifications",
+      onPress: () => router.push("/notifications"),
+    },
+  ];
+
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>My Account</Text>
+      <Text style={styles.heading}>My Account</Text>
 
       {/* Profile */}
       <View style={styles.profile}>
@@ -30,88 +71,64 @@ export default function AccountScreen() {
           </Text>
         </View>
 
-        <Text style={styles.name}>{user?.full_name}</Text>
-        <Text style={styles.role}>{user?.role}</Text>
+        <Text style={styles.name}>
+          {user?.full_name || "User"}
+        </Text>
+
+        <Text style={styles.role}>
+          {user?.role?.toUpperCase()}
+        </Text>
       </View>
 
       {/* Account Information */}
-      <View style={styles.info}>
-        <Text style={styles.label}>Full Name</Text>
-        <Text style={styles.value}>{user?.full_name}</Text>
-
-        <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{user?.email}</Text>
-
-        <Text style={styles.label}>Phone</Text>
-        <Text style={styles.value}>
-          {user?.phone || "Not provided"}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          Account Information
         </Text>
 
-        <Text style={styles.label}>Account Type</Text>
-        <Text style={styles.value}>{user?.role}</Text>
+        <Text style={styles.info}>
+          Name: {user?.full_name || "Not available"}
+        </Text>
+
+        <Text style={styles.info}>
+          Email: {user?.email || "Not available"}
+        </Text>
+
+        <Text style={styles.info}>
+          Phone: {user?.phone || "Not available"}
+        </Text>
+
+        <Text style={styles.info}>
+          Account Type: {user?.role || "Not available"}
+        </Text>
       </View>
 
-      {/* Buyer Menu */}
-      {user?.role === "buyer" && (
-        <View style={styles.menu}>
-          <Text style={styles.menuHeading}>My Activities</Text>
+      {/* Menu */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Menu</Text>
 
-          <Pressable
+        {menuItems.map((item, index) => (
+          <TouchableOpacity
+            key={index}
             style={styles.menuItem}
-            onPress={() => router.push("/(tabs)/my-orders")}
+            onPress={item.onPress}
           >
-            <Text style={styles.menuText}>My Orders</Text>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
+            <Text style={styles.menuText}>
+              {item.title}
+            </Text>
 
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => router.push("/addresses")}
-          >
-            <Text style={styles.menuText}>Delivery Addresses</Text>
             <Text style={styles.arrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => router.push("/favorites")}
-          >
-            <Text style={styles.menuText}>My Favorites</Text>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Farmer Menu */}
-      {user?.role === "farmer" && (
-        <View style={styles.menu}>
-          <Text style={styles.menuHeading}>My Activities</Text>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => router.push("/(tabs)/my-products")}
-          >
-            <Text style={styles.menuText}>My Products</Text>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.menuItem}
-            onPress={() => router.push("/(tabs)/orders")}
-          >
-            <Text style={styles.menuText}>Farmer Orders</Text>
-            <Text style={styles.arrow}>›</Text>
-          </Pressable>
-        </View>
-      )}
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Logout */}
-      <Pressable
+      <TouchableOpacity
         style={styles.logoutButton}
         onPress={handleLogout}
       >
         <Text style={styles.logoutText}>Logout</Text>
-      </Pressable>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -119,87 +136,84 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8faf8",
-    padding: 20,
+    backgroundColor: "#F5F5F5",
+    padding: 16,
   },
-  title: {
+  heading: {
     fontSize: 25,
     fontWeight: "bold",
-    marginBottom: 25,
+    color: "#222",
+    marginBottom: 20,
   },
   profile: {
+    backgroundColor: "#fff",
+    padding: 25,
+    borderRadius: 10,
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
   avatar: {
-    width: 80,
-    height: 80,
+    width: 75,
+    height: 75,
     borderRadius: 40,
-    backgroundColor: "#15803d",
+    backgroundColor: "#2E7D32",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
   },
   avatarText: {
+    fontSize: 30,
     color: "#fff",
-    fontSize: 32,
     fontWeight: "bold",
   },
   name: {
     fontSize: 20,
     fontWeight: "bold",
+    color: "#222",
   },
   role: {
-    color: "#15803d",
+    color: "#2E7D32",
     marginTop: 5,
-    textTransform: "capitalize",
+    fontWeight: "bold",
   },
-  info: {
+  section: {
     backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 12,
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 20,
   },
-  label: {
-    color: "#777",
-    marginBottom: 5,
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 18,
-  },
-  menu: {
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  menuHeading: {
+  sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 15,
+    color: "#222",
+  },
+  info: {
+    fontSize: 15,
+    color: "#555",
+    marginBottom: 12,
   },
   menuItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
   menuText: {
     fontSize: 16,
+    color: "#333",
   },
   arrow: {
-    fontSize: 24,
-    color: "#777",
+    fontSize: 23,
+    color: "#888",
   },
   logoutButton: {
-    backgroundColor: "#dc2626",
-    padding: 15,
-    borderRadius: 10,
+    backgroundColor: "#D32F2F",
+    padding: 16,
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 25,
     marginBottom: 30,
   },
   logoutText: {
