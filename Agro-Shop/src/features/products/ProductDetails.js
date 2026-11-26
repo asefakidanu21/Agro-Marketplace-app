@@ -44,66 +44,45 @@ export default function ProductDetails() {
     }
   };
 
-  const handleAddToCart = async () => {
-    if (!product || Number(product.quantity) < quantity) {
-      Alert.alert("Error", "Not enough product stock available");
-      return;
-    }
+  // Add product and automatically navigate to Cart
+const handleAddToCart = async () => {
+  if (!product || Number(product.quantity) < quantity) {
+    Alert.alert("Error", "Not enough product stock available");
+    return;
+  }
 
-    try {
-      setAdding(true);
+  try {
+    setAdding(true);
 
-      await addToCart(product.id, quantity);
+    await addToCart(product.id, quantity);
 
-      Alert.alert("Success", "Product added to your cart", [
-        {
-          text: "Continue Shopping",
-          onPress: () => router.back(),
-        },
-        {
-          text: "View Cart",
-          onPress: () => router.push("/(tabs)/cart"),
-        },
-      ]);
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to add product to cart"
-      );
-    } finally {
-      setAdding(false);
-    }
-  };
+    router.replace("/cart");
+  } catch (error) {
+    Alert.alert(
+      "Error",
+      error.response?.data?.message || "Failed to add product to cart"
+    );
+  } finally {
+    setAdding(false);
+  }
+};
 
-  const handleAddFavorite = async () => {
-    try {
-      setFavoriting(true);
+const handleAddFavorite = async () => {
+  try {
+    setFavoriting(true);
 
-      await addFavorite(product.id);
+    await addFavorite(product.id);
 
-      Alert.alert(
-        "Success",
-        "Product added to your favorites",
-        [
-          {
-            text: "Continue Shopping",
-            style: "cancel",
-          },
-          {
-            text: "View Favorites",
-            onPress: () => router.push("/favorites"),
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert(
-        "Error",
-        error.response?.data?.message || "Failed to add favorite"
-      );
-    } finally {
-      setFavoriting(false);
-    }
-  };
+    router.replace("/favorites");
+  } catch (error) {
+    Alert.alert(
+      "Error",
+      error.response?.data?.message || "Failed to add favorite"
+    );
+  } finally {
+    setFavoriting(false);
+  }
+};
 
   if (loading) {
     return (
